@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Payment;
 use Carbon\CarbonImmutable;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Section;
@@ -13,7 +14,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class CashFlowReport extends Page implements HasForms, HasTable
@@ -90,7 +91,7 @@ class CashFlowReport extends Page implements HasForms, HasTable
     public function getTotals(): array
     {
         $totals = DB::query()
-            ->fromSub($this->cashFlowQuery(), 't')
+            ->fromSub($this->cashFlowQuery()->toBase(), 't')
             ->selectRaw('COALESCE(SUM(income), 0) as income')
             ->selectRaw('COALESCE(SUM(expense), 0) as expense')
             ->selectRaw('COALESCE(SUM(net), 0) as net')
@@ -131,7 +132,7 @@ class CashFlowReport extends Page implements HasForms, HasTable
             ->select('date')
             ->distinct();
 
-        return DB::query()
+        $base = DB::query()
             ->fromSub($datesSub, 'd')
             ->leftJoinSub($incomeSub, 'i', 'i.date', '=', 'd.date')
             ->leftJoinSub($expenseSub, 'e', 'e.date', '=', 'd.date')
@@ -139,5 +140,12 @@ class CashFlowReport extends Page implements HasForms, HasTable
             ->selectRaw('COALESCE(i.income, 0) as income')
             ->selectRaw('COALESCE(e.expense, 0) as expense')
             ->selectRaw('COALESCE(i.income, 0) - COALESCE(e.expense, 0) as net');
+
+        return Payment::query()
+            ->fromSub($base, 't')
+            ->selectRaw('t.date as date')
+            ->selectRaw('t.income as income')
+            ->selectRaw('t.expense as expense')
+            ->selectRaw('t.net as net');
     }
 }

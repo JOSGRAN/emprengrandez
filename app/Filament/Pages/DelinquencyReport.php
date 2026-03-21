@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Customer;
 use Carbon\CarbonImmutable;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Section;
@@ -13,7 +14,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class DelinquencyReport extends Page implements HasForms, HasTable
@@ -83,7 +84,7 @@ class DelinquencyReport extends Page implements HasForms, HasTable
     public function getTotals(): array
     {
         $totals = DB::query()
-            ->fromSub($this->delinquencyQuery(), 't')
+            ->fromSub($this->delinquencyQuery()->toBase(), 't')
             ->selectRaw('COALESCE(SUM(overdue_installments), 0) as overdue_installments')
             ->selectRaw('COALESCE(SUM(overdue_amount), 0) as overdue_amount')
             ->selectRaw('COUNT(*) as customers')
@@ -101,9 +102,9 @@ class DelinquencyReport extends Page implements HasForms, HasTable
         $from = (string) ($this->data['from'] ?? CarbonImmutable::today()->subDays(29)->toDateString());
         $to = (string) ($this->data['to'] ?? CarbonImmutable::today()->toDateString());
 
-        return DB::table('installments')
-            ->join('credits', 'credits.id', '=', 'installments.credit_id')
-            ->join('customers', 'customers.id', '=', 'credits.customer_id')
+        return Customer::query()
+            ->join('credits', 'credits.customer_id', '=', 'customers.id')
+            ->join('installments', 'installments.credit_id', '=', 'credits.id')
             ->where('installments.status', 'overdue')
             ->whereBetween('installments.due_date', [$from, $to])
             ->groupBy('customers.id', 'customers.code', 'customers.name')

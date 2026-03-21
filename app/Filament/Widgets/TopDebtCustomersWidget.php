@@ -35,6 +35,7 @@ class TopDebtCustomersWidget extends BaseWidget
     public function table(Table $table): Table
     {
         return $table
+            ->query($this->getTableQuery())
             ->defaultPaginationPageOption(10)
             ->columns([
                 Tables\Columns\TextColumn::make('code')
