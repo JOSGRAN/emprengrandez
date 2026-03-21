@@ -5,6 +5,9 @@ WORKDIR /var/www/html
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     unzip \
+    autoconf \
+    g++ \
+    make \
     libicu-dev \
     libpng-dev \
     libjpeg62-turbo-dev \
@@ -14,6 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml2-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) pdo_mysql mbstring exif pcntl bcmath gd zip intl \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
