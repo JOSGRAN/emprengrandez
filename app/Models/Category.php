@@ -34,6 +34,56 @@ class Category extends Model
         });
     }
 
+    public function getDepthAttribute(): int
+    {
+        $depth = 0;
+        $current = $this->parent;
+
+        while ($current && $depth < 20) {
+            $depth++;
+            $current = $current->parent;
+        }
+
+        return $depth;
+    }
+
+    public static function treeOptions(?int $excludeId = null, int $maxDepth = 2): array
+    {
+        $categories = self::query()
+            ->select(['id', 'name', 'parent_id'])
+            ->orderBy('name')
+            ->get();
+
+        $childrenByParent = [];
+        foreach ($categories as $category) {
+            if ($excludeId && (int) $category->id === (int) $excludeId) {
+                continue;
+            }
+
+            $childrenByParent[$category->parent_id ?? 0][] = $category;
+        }
+
+        $options = [];
+
+        $walk = function (int $parentId, int $depth) use (&$walk, &$options, $childrenByParent, $maxDepth): void {
+            if (! isset($childrenByParent[$parentId])) {
+                return;
+            }
+
+            foreach ($childrenByParent[$parentId] as $node) {
+                $options[$node->id] = str_repeat('— ', $depth).$node->name;
+
+                if ($depth + 1 < $maxDepth) {
+                    $walk((int) $node->id, $depth + 1);
+                }
+            }
+        };
+
+        $walk(0, 0);
+
+        return $options;
+    }
+
     public function parent(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'parent_id');

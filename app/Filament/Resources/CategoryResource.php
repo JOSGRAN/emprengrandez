@@ -32,9 +32,49 @@ class CategoryResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('parent_id')
                             ->label('Categoría padre')
-                            ->relationship('parent', 'name')
+                            ->options(fn (?Category $record): array => Category::treeOptions($record?->id))
+                            ->nullable()
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->rule(function (?Category $record) {
+                                return function (string $attribute, $value, \Closure $fail) use ($record): void {
+                                    if (blank($value)) {
+                                        return;
+                                    }
+
+                                    $parentId = (int) $value;
+
+                                    if ($record && $parentId === (int) $record->id) {
+                                        $fail('Una categoría no puede ser su propio padre.');
+
+                                        return;
+                                    }
+
+                                    $parent = Category::query()->find($parentId);
+                                    if (! $parent) {
+                                        return;
+                                    }
+
+                                    if ($parent->parent_id !== null) {
+                                        $fail('Máximo 2 niveles: selecciona una categoría padre de primer nivel.');
+
+                                        return;
+                                    }
+
+                                    $cursor = $parent;
+                                    $hops = 0;
+                                    while ($cursor && $hops < 20) {
+                                        if ($record && (int) $cursor->id === (int) $record->id) {
+                                            $fail('No se permite crear ciclos en la jerarquía.');
+
+                                            return;
+                                        }
+
+                                        $cursor = $cursor->parent;
+                                        $hops++;
+                                    }
+                                };
+                            }),
                         Forms\Components\TextInput::make('name')
                             ->label('Nombre')
                             ->required()
@@ -66,6 +106,7 @@ class CategoryResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
+                    ->formatStateUsing(fn (string $state, Category $record): string => str_repeat('— ', (int) $record->depth).$state)
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('parent.name')
@@ -97,6 +138,10 @@ class CategoryResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with(['parent.parent'])
+            ->orderByRaw('CASE WHEN parent_id IS NULL THEN id ELSE parent_id END')
+            ->orderByRaw('parent_id IS NOT NULL')
+            ->orderBy('name')
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);

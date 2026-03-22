@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
+use App\Models\Category;
 use App\Models\Product;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -32,7 +33,7 @@ class ProductResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('category_id')
                             ->label('Categoría')
-                            ->relationship('category', 'name')
+                            ->options(fn (): array => Category::treeOptions())
                             ->searchable()
                             ->preload(),
                         Forms\Components\TextInput::make('name')
