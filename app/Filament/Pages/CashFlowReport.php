@@ -15,6 +15,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
 
 class CashFlowReport extends Page implements HasForms, HasTable
@@ -142,6 +143,9 @@ class CashFlowReport extends Page implements HasForms, HasTable
             ->selectRaw('COALESCE(i.income, 0) - COALESCE(e.expense, 0) as net');
 
         return Payment::query()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ])
             ->fromSub($base, 't')
             ->selectRaw('t.date as date')
             ->selectRaw('t.income as income')
