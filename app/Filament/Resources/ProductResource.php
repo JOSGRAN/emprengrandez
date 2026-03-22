@@ -89,6 +89,11 @@ class ProductResource extends Resource
                     ->label('Precio')
                     ->money('PEN')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('cost')
+                    ->label('Costo')
+                    ->money('PEN')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
@@ -112,6 +117,7 @@ class ProductResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with(['category.parent'])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
