@@ -26,7 +26,7 @@ class Category extends Model
         static::creating(function (Category $category) {
             if (blank($category->slug) && filled($category->name)) {
                 $slug = Str::slug($category->name);
-                if (Category::where('slug', $slug)->exists()) {
+                if (Category::withTrashed()->where('slug', $slug)->exists()) {
                     $slug .= '-'.Str::lower(Str::random(6));
                 }
                 $category->slug = $slug;
