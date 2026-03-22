@@ -17,6 +17,7 @@ class Payment extends Model
         'customer_id',
         'credit_id',
         'installment_id',
+        'wallet_id',
         'paid_on',
         'amount',
         'method',
@@ -56,5 +57,10 @@ class Payment extends Model
     public function installment(): BelongsTo
     {
         return $this->belongsTo(Installment::class);
+    }
+
+    public function wallet(): BelongsTo
+    {
+        return $this->belongsTo(Wallet::class);
     }
 }

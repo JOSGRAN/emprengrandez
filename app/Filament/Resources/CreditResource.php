@@ -4,9 +4,12 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CreditResource\Pages;
 use App\Filament\Resources\CreditResource\RelationManagers\InstallmentsRelationManager;
+use App\Filament\Resources\CreditResource\RelationManagers\ItemsRelationManager;
 use App\Filament\Resources\CreditResource\RelationManagers\PaymentsRelationManager;
 use App\Models\Credit;
 use App\Models\Installment;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\CreditService;
 use App\Services\PaymentService;
 use Carbon\CarbonImmutable;
@@ -27,16 +30,37 @@ class CreditResource extends Resource
 
     protected static ?string $navigationGroup = 'Finanzas';
 
+    protected static ?string $modelLabel = 'Crédito';
+
+    protected static ?string $pluralModelLabel = 'Créditos';
+
     public static function form(Form $form): Form
     {
         $updatePreview = function (Forms\Set $set, Forms\Get $get): void {
-            $principalAmount = (string) ($get('principal_amount') ?? '');
+            $items = $get('items') ?? [];
+            $itemsTotal = 0.0;
+            if (is_array($items)) {
+                foreach ($items as $item) {
+                    $qty = (int) ($item['quantity'] ?? 0);
+                    $price = (float) ($item['price'] ?? 0);
+                    $itemsTotal += max(0, $qty) * max(0, $price);
+                }
+            }
+
+            $principalAmount = $itemsTotal > 0
+                ? number_format($itemsTotal, 2, '.', '')
+                : (string) ($get('principal_amount') ?? '');
+
             $installmentsCount = (int) ($get('installments_count') ?? 0);
             $frequency = (string) ($get('frequency') ?? 'monthly');
             $interestType = (string) ($get('interest_type') ?? 'none');
             $interestRate = (string) ($get('interest_rate') ?? 0);
             $calculationMethod = (string) ($get('calculation_method') ?? 'direct');
             $startDate = $get('start_date');
+
+            if ($itemsTotal > 0) {
+                $set('principal_amount', $principalAmount);
+            }
 
             if ($principalAmount === '' || $installmentsCount < 1 || blank($startDate)) {
                 $set('schedule_preview', []);
@@ -87,13 +111,115 @@ class CreditResource extends Resource
                             ->required()
                             ->live()
                             ->afterStateUpdated($updatePreview),
+                        Forms\Components\Repeater::make('items')
+                            ->label('Productos')
+                            ->visibleOn('create')
+                            ->minItems(1)
+                            ->reorderable(false)
+                            ->live()
+                            ->afterStateUpdated($updatePreview)
+                            ->schema([
+                                Forms\Components\Select::make('product_id')
+                                    ->label('Producto')
+                                    ->options(fn (): array => Product::query()->orderBy('name')->pluck('name', 'id')->all())
+                                    ->searchable()
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated(function (Forms\Set $set) {
+                                        $set('product_variant_id', null);
+                                        $set('price', null);
+                                        $set('quantity', 1);
+                                    }),
+                                Forms\Components\Select::make('product_variant_id')
+                                    ->label('Variante')
+                                    ->options(function (Forms\Get $get): array {
+                                        $productId = (int) ($get('product_id') ?? 0);
+                                        if ($productId <= 0) {
+                                            return [];
+                                        }
+
+                                        return ProductVariant::query()
+                                            ->where('product_id', $productId)
+                                            ->orderBy('id')
+                                            ->get(['id', 'size', 'color', 'stock', 'price'])
+                                            ->mapWithKeys(function (ProductVariant $v) {
+                                                $parts = array_filter([$v->size, $v->color]);
+                                                $label = trim(implode(' / ', $parts));
+                                                $label = $label !== '' ? $label : ('Variante #'.$v->id);
+                                                $label .= ' — Stock: '.(int) $v->stock;
+                                                if ($v->price !== null) {
+                                                    $label .= ' — S/ '.number_format((float) $v->price, 2, '.', '');
+                                                }
+
+                                                return [$v->id => $label];
+                                            })
+                                            ->all();
+                                    })
+                                    ->searchable()
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                        $variantId = (int) ($get('product_variant_id') ?? 0);
+                                        if ($variantId <= 0) {
+                                            return;
+                                        }
+
+                                        $variant = ProductVariant::query()->find($variantId);
+                                        if (! $variant) {
+                                            return;
+                                        }
+
+                                        $set('price', (string) ($variant->price ?? 0));
+                                        $set('quantity', max(1, (int) ($get('quantity') ?? 1)));
+                                    }),
+                                Forms\Components\TextInput::make('quantity')
+                                    ->label('Cantidad')
+                                    ->numeric()
+                                    ->minValue(1)
+                                    ->default(1)
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated($updatePreview)
+                                    ->maxValue(function (Forms\Get $get): ?int {
+                                        $variantId = (int) ($get('product_variant_id') ?? 0);
+                                        if ($variantId <= 0) {
+                                            return null;
+                                        }
+
+                                        $stock = ProductVariant::query()->whereKey($variantId)->value('stock');
+                                        if ($stock === null) {
+                                            return null;
+                                        }
+
+                                        return (int) $stock;
+                                    }),
+                                Forms\Components\TextInput::make('price')
+                                    ->label('Precio')
+                                    ->numeric()
+                                    ->inputMode('decimal')
+                                    ->minValue(0.01)
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated($updatePreview),
+                                Forms\Components\Placeholder::make('line_total')
+                                    ->label('Total')
+                                    ->content(function (Forms\Get $get): string {
+                                        $qty = (int) ($get('quantity') ?? 0);
+                                        $price = (float) ($get('price') ?? 0);
+                                        $total = max(0, $qty) * max(0, $price);
+
+                                        return 'S/ '.number_format($total, 2, '.', ',');
+                                    }),
+                            ])
+                            ->columns(5),
                         Forms\Components\TextInput::make('principal_amount')
-                            ->label('Monto')
+                            ->label('Monto (calculado)')
                             ->numeric()
                             ->inputMode('decimal')
-                            ->required()
                             ->live()
-                            ->afterStateUpdated($updatePreview),
+                            ->afterStateUpdated($updatePreview)
+                            ->disabled()
+                            ->dehydrated(),
                         Forms\Components\TextInput::make('installments_count')
                             ->label('N° cuotas')
                             ->numeric()
@@ -341,6 +467,7 @@ class CreditResource extends Resource
     public static function getRelations(): array
     {
         return [
+            ItemsRelationManager::class,
             InstallmentsRelationManager::class,
             PaymentsRelationManager::class,
         ];

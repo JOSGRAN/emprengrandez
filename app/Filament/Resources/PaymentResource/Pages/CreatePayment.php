@@ -48,6 +48,7 @@ class CreatePayment extends CreateRecord
                 paidOn: CarbonImmutable::parse($data['paid_on']),
                 installment: $installment,
                 meta: [
+                    'wallet_id' => $data['wallet_id'] ?? null,
                     'method' => $data['method'] ?? 'cash',
                     'reference' => $data['reference'] ?? null,
                     'notes' => $data['notes'] ?? null,

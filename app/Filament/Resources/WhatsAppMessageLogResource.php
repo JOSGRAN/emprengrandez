@@ -18,6 +18,10 @@ class WhatsAppMessageLogResource extends Resource
 
     protected static ?string $navigationGroup = 'Administración';
 
+    protected static ?string $modelLabel = 'Log de WhatsApp';
+
+    protected static ?string $pluralModelLabel = 'Logs de WhatsApp';
+
     public static function form(Form $form): Form
     {
         return $form

@@ -15,6 +15,7 @@ class Expense extends Model
     protected $fillable = [
         'code',
         'expense_category_id',
+        'wallet_id',
         'occurred_on',
         'amount',
         'payment_method',
@@ -43,5 +44,10 @@ class Expense extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ExpenseCategory::class, 'expense_category_id');
+    }
+
+    public function wallet(): BelongsTo
+    {
+        return $this->belongsTo(Wallet::class);
     }
 }

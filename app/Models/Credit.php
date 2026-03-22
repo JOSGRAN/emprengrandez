@@ -66,4 +66,9 @@ class Credit extends Model
     {
         return $this->hasMany(Payment::class)->latest('paid_on');
     }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(CreditItem::class);
+    }
 }

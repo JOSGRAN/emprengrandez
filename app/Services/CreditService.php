@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Credit;
+use App\Models\CreditItem;
 use App\Models\Customer;
 use App\Models\Installment;
+use App\Models\ProductVariant;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -13,8 +15,28 @@ class CreditService
     public function createCredit(Customer $customer, array $data): Credit
     {
         return DB::transaction(function () use ($customer, $data) {
-            $principalCents = self::toCents((string) ($data['principal_amount'] ?? 0));
             $installmentsCount = (int) ($data['installments_count'] ?? 0);
+            $items = $data['items'] ?? [];
+
+            if (! is_array($items) || count($items) === 0) {
+                throw new \InvalidArgumentException('Debe agregar al menos un producto.');
+            }
+
+            $principalCents = 0;
+            foreach ($items as $item) {
+                $quantity = (int) ($item['quantity'] ?? 0);
+                $priceCents = self::toCents((string) ($item['price'] ?? 0));
+
+                if ($quantity < 1) {
+                    throw new \InvalidArgumentException('La cantidad debe ser mayor a 0.');
+                }
+
+                if ($priceCents <= 0) {
+                    throw new \InvalidArgumentException('El precio debe ser mayor a 0.');
+                }
+
+                $principalCents += ($priceCents * $quantity);
+            }
 
             if ($principalCents <= 0) {
                 throw new \InvalidArgumentException('El monto debe ser mayor a 0.');
@@ -31,7 +53,7 @@ class CreditService
             $credit = new Credit;
             $credit->customer()->associate($customer);
             $credit->start_date = $data['start_date'];
-            $credit->principal_amount = $data['principal_amount'];
+            $credit->principal_amount = self::fromCents($principalCents);
             $credit->interest_type = $data['interest_type'] ?? 'none';
             $credit->interest_rate = $data['interest_rate'] ?? 0;
             $credit->calculation_method = $data['calculation_method'] ?? 'direct';
@@ -47,6 +69,37 @@ class CreditService
             }
 
             $credit->save();
+
+            foreach ($items as $item) {
+                $productId = (int) ($item['product_id'] ?? 0);
+                $variantId = (int) ($item['product_variant_id'] ?? 0);
+                $quantity = (int) ($item['quantity'] ?? 0);
+                $priceCents = self::toCents((string) ($item['price'] ?? 0));
+                $totalCents = $priceCents * $quantity;
+
+                $variant = ProductVariant::query()
+                    ->lockForUpdate()
+                    ->findOrFail($variantId);
+
+                if ($variant->product_id !== $productId) {
+                    throw new \InvalidArgumentException('La variante seleccionada no corresponde al producto.');
+                }
+
+                if ((int) $variant->stock < $quantity) {
+                    throw new \RuntimeException('Stock insuficiente para la variante seleccionada.');
+                }
+
+                $variant->decrement('stock', $quantity);
+
+                $creditItem = new CreditItem;
+                $creditItem->credit()->associate($credit);
+                $creditItem->product_id = $productId;
+                $creditItem->product_variant_id = $variantId;
+                $creditItem->quantity = $quantity;
+                $creditItem->price = self::fromCents($priceCents);
+                $creditItem->total = self::fromCents($totalCents);
+                $creditItem->save();
+            }
 
             $schedule = $this->generateSchedule(
                 principalAmount: (string) $credit->principal_amount,

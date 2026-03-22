@@ -9,6 +9,7 @@ use App\Filament\Widgets\IncomeVsExpensesChartWidget;
 use App\Filament\Widgets\OverdueBannerWidget;
 use App\Filament\Widgets\PaymentsByDayChartWidget;
 use App\Filament\Widgets\TopDebtCustomersWidget;
+use App\Filament\Widgets\WalletStatsWidget;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -35,8 +36,9 @@ class SuperAdminPanelProvider extends PanelProvider
             ->path('superadmin')
             ->login()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Emerald,
             ])
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->plugins([
                 FilamentShieldPlugin::make(),
             ])
@@ -52,6 +54,7 @@ class SuperAdminPanelProvider extends PanelProvider
                 OverdueBannerWidget::class,
                 FinanceStatsWidget::class,
                 CollectionsStatsWidget::class,
+                WalletStatsWidget::class,
                 IncomeVsExpensesChartWidget::class,
                 PaymentsByDayChartWidget::class,
                 CreditsGeneratedChartWidget::class,

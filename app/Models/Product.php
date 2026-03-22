@@ -39,4 +39,9 @@ class Product extends Model
     {
         return $this->hasMany(ProductVariant::class);
     }
+
+    public function creditItems(): HasMany
+    {
+        return $this->hasMany(CreditItem::class);
+    }
 }

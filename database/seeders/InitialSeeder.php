@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\NotificationTemplate;
 use App\Models\Setting;
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
@@ -63,6 +64,18 @@ class InitialSeeder extends Seeder
         if (! $user->hasRole($superAdminRole->name)) {
             $user->assignRole($superAdminRole);
         }
+
+        $wallet = Wallet::query()->firstOrCreate(
+            ['name' => 'Caja principal'],
+            [
+                'balance' => 0,
+                'currency' => 'PEN',
+                'is_active' => true,
+            ],
+        );
+
+        Setting::setValue('wallet.default_wallet_id', (int) $wallet->id, type: 'int', description: 'Billetera por defecto para pagos y gastos.');
+        Setting::setValue('wallet.allow_negative', true, type: 'bool', description: 'Permitir saldo negativo en la billetera.');
 
         Setting::setValue('notifications.enabled', true, type: 'bool', description: 'Habilitar envío de notificaciones.');
         Setting::setValue('notifications.due_soon_days', 1, type: 'int', description: 'Días antes del vencimiento para recordar.');

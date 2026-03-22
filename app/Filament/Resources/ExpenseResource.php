@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ExpenseResource\Pages;
 use App\Models\Expense;
+use App\Models\Wallet;
+use App\Services\WalletService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -19,6 +21,10 @@ class ExpenseResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-arrow-trending-down';
 
     protected static ?string $navigationGroup = 'Finanzas';
+
+    protected static ?string $modelLabel = 'Gasto';
+
+    protected static ?string $pluralModelLabel = 'Gastos';
 
     public static function form(Form $form): Form
     {
@@ -39,6 +45,12 @@ class ExpenseResource extends Resource
                         Forms\Components\DatePicker::make('occurred_on')
                             ->label('Fecha')
                             ->default(now())
+                            ->required(),
+                        Forms\Components\Select::make('wallet_id')
+                            ->label('Billetera')
+                            ->options(fn (): array => Wallet::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())
+                            ->default(fn (): ?int => app(WalletService::class)->getDefaultWalletId())
+                            ->searchable()
                             ->required(),
                         Forms\Components\TextInput::make('amount')
                             ->label('Monto')

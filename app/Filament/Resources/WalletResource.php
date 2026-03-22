@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\ExpenseCategoryResource\Pages;
-use App\Models\ExpenseCategory;
+use App\Filament\Resources\WalletResource\Pages;
+use App\Models\Wallet;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -12,17 +12,17 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class ExpenseCategoryResource extends Resource
+class WalletResource extends Resource
 {
-    protected static ?string $model = ExpenseCategory::class;
+    protected static ?string $model = Wallet::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+    protected static ?string $navigationIcon = 'heroicon-o-wallet';
 
     protected static ?string $navigationGroup = 'Finanzas';
 
-    protected static ?string $modelLabel = 'Categoría de gasto';
+    protected static ?string $modelLabel = 'Billetera';
 
-    protected static ?string $pluralModelLabel = 'Categorías de gasto';
+    protected static ?string $pluralModelLabel = 'Billeteras';
 
     public static function form(Form $form): Form
     {
@@ -34,22 +34,21 @@ class ExpenseCategoryResource extends Resource
                             ->label('Nombre')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('slug')
-                            ->label('Slug')
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->visibleOn('edit'),
-                        Forms\Components\Textarea::make('description')
-                            ->label('Descripción')
-                            ->rows(3),
-                        Forms\Components\Select::make('status')
-                            ->label('Estado')
-                            ->options([
-                                'active' => 'Activo',
-                                'inactive' => 'Inactivo',
-                            ])
-                            ->default('active')
+                        Forms\Components\TextInput::make('currency')
+                            ->label('Moneda')
+                            ->default('PEN')
+                            ->maxLength(3)
                             ->required(),
+                        Forms\Components\Toggle::make('is_active')
+                            ->label('Activa')
+                            ->default(true),
+                        Forms\Components\TextInput::make('balance')
+                            ->label('Saldo')
+                            ->numeric()
+                            ->inputMode('decimal')
+                            ->required()
+                            ->default(0)
+                            ->disabledOn('edit'),
                     ])
                     ->columns(2),
             ]);
@@ -63,9 +62,17 @@ class ExpenseCategoryResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status')
-                    ->label('Estado')
+                Tables\Columns\TextColumn::make('currency')
+                    ->label('Moneda')
                     ->badge()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('balance')
+                    ->label('Saldo')
+                    ->money('PEN')
+                    ->sortable(),
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label('Activa')
+                    ->boolean()
                     ->sortable(),
             ])
             ->filters([
@@ -94,9 +101,9 @@ class ExpenseCategoryResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListExpenseCategories::route('/'),
-            'create' => Pages\CreateExpenseCategory::route('/create'),
-            'edit' => Pages\EditExpenseCategory::route('/{record}/edit'),
+            'index' => Pages\ListWallets::route('/'),
+            'create' => Pages\CreateWallet::route('/create'),
+            'edit' => Pages\EditWallet::route('/{record}/edit'),
         ];
     }
 }

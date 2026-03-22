@@ -6,6 +6,8 @@ use App\Filament\Resources\PaymentResource\Pages;
 use App\Models\Credit;
 use App\Models\Installment;
 use App\Models\Payment;
+use App\Models\Wallet;
+use App\Services\WalletService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -21,6 +23,10 @@ class PaymentResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
     protected static ?string $navigationGroup = 'Finanzas';
+
+    protected static ?string $modelLabel = 'Pago';
+
+    protected static ?string $pluralModelLabel = 'Pagos';
 
     public static function form(Form $form): Form
     {
@@ -102,6 +108,12 @@ class PaymentResource extends Resource
                         Forms\Components\DatePicker::make('paid_on')
                             ->label('Fecha de pago')
                             ->default(now())
+                            ->required(),
+                        Forms\Components\Select::make('wallet_id')
+                            ->label('Billetera')
+                            ->options(fn (): array => Wallet::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all())
+                            ->default(fn (): ?int => app(WalletService::class)->getDefaultWalletId())
+                            ->searchable()
                             ->required(),
                         Forms\Components\TextInput::make('amount')
                             ->label('Monto')

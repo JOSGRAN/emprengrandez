@@ -38,6 +38,7 @@ class CreateCredit extends CreateRecord
             return app(CreditService::class)->createCredit($customer, [
                 'start_date' => $data['start_date'],
                 'principal_amount' => $data['principal_amount'],
+                'items' => $data['items'] ?? [],
                 'interest_type' => $data['interest_type'] ?? 'none',
                 'interest_rate' => $data['interest_rate'] ?? 0,
                 'calculation_method' => $data['calculation_method'] ?? 'direct',
@@ -48,8 +49,10 @@ class CreateCredit extends CreateRecord
                 'updated_by' => auth()->id(),
             ]);
         } catch (\RuntimeException $e) {
+            $field = str_contains($e->getMessage(), 'Stock') ? 'items' : 'customer_id';
+
             throw ValidationException::withMessages([
-                'customer_id' => $e->getMessage(),
+                $field => $e->getMessage(),
             ]);
         }
     }

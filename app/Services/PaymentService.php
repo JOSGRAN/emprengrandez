@@ -45,6 +45,7 @@ class PaymentService
             $payment->customer_id = $credit->customer_id;
             $payment->credit_id = $credit->id;
             $payment->installment_id = $installment?->id;
+            $payment->wallet_id = $meta['wallet_id'] ?? app(WalletService::class)->getDefaultWalletId();
             $payment->paid_on = $paidOn->toDateString();
             $payment->amount = $amount;
             $payment->method = $meta['method'] ?? 'cash';
