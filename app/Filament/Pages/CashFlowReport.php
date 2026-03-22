@@ -15,6 +15,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
 
@@ -103,6 +104,11 @@ class CashFlowReport extends Page implements HasForms, HasTable
             'expense' => (float) ($totals->expense ?? 0),
             'net' => (float) ($totals->net ?? 0),
         ];
+    }
+
+    public function getTableRecordKey(Model $record): string
+    {
+        return (string) $record->getAttribute('date');
     }
 
     private function cashFlowQuery(): Builder
