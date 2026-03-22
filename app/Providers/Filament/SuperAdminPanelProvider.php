@@ -19,6 +19,7 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Assets\Css;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -26,6 +27,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Illuminate\Support\Facades\Vite;
 
 class SuperAdminPanelProvider extends PanelProvider
 {
@@ -38,7 +40,9 @@ class SuperAdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Emerald,
             ])
-            ->viteTheme('resources/css/filament/admin/theme.css')
+            ->assets([
+                Css::make('admin-theme')->html(fn (): string => Vite::asset('resources/css/filament/admin/theme.css')),
+            ])
             ->plugins([
                 FilamentShieldPlugin::make(),
             ])
