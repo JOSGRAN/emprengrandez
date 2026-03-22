@@ -87,7 +87,16 @@ class SaleResource extends Resource
                                 'voided' => 'Anulada',
                             ])
                             ->default('posted')
-                            ->required(),
+                            ->required()
+                            ->visibleOn('create'),
+                        Forms\Components\Placeholder::make('status_view')
+                            ->label('Estado')
+                            ->visibleOn('edit')
+                            ->content(fn (?Sale $record): string => match ($record?->status) {
+                                'posted' => 'Registrada',
+                                'voided' => 'Anulada',
+                                default => (string) ($record?->status ?? '-'),
+                            }),
                         Forms\Components\Textarea::make('notes')
                             ->label('Notas')
                             ->rows(2)

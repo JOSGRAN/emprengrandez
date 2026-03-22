@@ -104,4 +104,46 @@ class SaleService
             return $sale;
         });
     }
+
+    public function voidSale(Sale $sale, ?int $voidedBy = null): Sale
+    {
+        return DB::transaction(function () use ($sale, $voidedBy) {
+            $sale = Sale::query()->lockForUpdate()->findOrFail($sale->id);
+
+            if ($sale->status !== 'posted') {
+                return $sale;
+            }
+
+            $items = SaleItem::query()
+                ->where('sale_id', $sale->id)
+                ->get();
+
+            foreach ($items as $item) {
+                $variant = ProductVariant::query()
+                    ->lockForUpdate()
+                    ->findOrFail($item->product_variant_id);
+
+                $variant->increment('stock', (int) $item->quantity);
+            }
+
+            $walletService = app(WalletService::class);
+            if (! $walletService->existsForReference((int) $sale->wallet_id, 'sale', (int) $sale->id, true)) {
+                $walletService->record(
+                    walletId: (int) $sale->wallet_id,
+                    type: 'income',
+                    amount: '-'.(string) $sale->total,
+                    description: 'Anulación venta '.$sale->code,
+                    referenceType: 'sale',
+                    referenceId: (int) $sale->id,
+                    isReversal: true,
+                );
+            }
+
+            $sale->status = 'voided';
+            $sale->notes = trim((string) ($sale->notes ?? '')."\n".'Anulada por usuario #'.(string) ($voidedBy ?? ''));
+            $sale->save();
+
+            return $sale;
+        });
+    }
 }
