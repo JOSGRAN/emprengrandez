@@ -5,28 +5,32 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class ProductVariant extends Model
+class SaleItem extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'sale_id',
         'product_id',
-        'size',
-        'color',
-        'sku',
-        'stock',
+        'product_variant_id',
+        'quantity',
         'price',
-        'status',
+        'total',
     ];
 
     protected function casts(): array
     {
         return [
             'price' => 'decimal:2',
+            'total' => 'decimal:2',
         ];
+    }
+
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
     }
 
     public function product(): BelongsTo
@@ -34,13 +38,8 @@ class ProductVariant extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function creditItems(): HasMany
+    public function variant(): BelongsTo
     {
-        return $this->hasMany(CreditItem::class, 'product_variant_id');
-    }
-
-    public function saleItems(): HasMany
-    {
-        return $this->hasMany(SaleItem::class, 'product_variant_id');
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 }

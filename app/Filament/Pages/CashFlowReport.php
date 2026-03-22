@@ -116,10 +116,29 @@ class CashFlowReport extends Page implements HasForms, HasTable
         $from = (string) ($this->data['from'] ?? CarbonImmutable::today()->subDays(29)->toDateString());
         $to = (string) ($this->data['to'] ?? CarbonImmutable::today()->toDateString());
 
-        $incomeSub = DB::table('payments')
+        $incomePaymentsSub = DB::table('payments')
             ->where('status', 'posted')
             ->whereBetween('paid_on', [$from, $to])
             ->selectRaw('DATE(paid_on) as date, SUM(amount) as income')
+            ->groupBy('date');
+
+        $incomeSalesSub = DB::table('sales')
+            ->where('status', 'posted')
+            ->whereBetween('sold_on', [$from, $to])
+            ->selectRaw('DATE(sold_on) as date, SUM(total) as income')
+            ->groupBy('date');
+
+        $incomeSub = DB::query()
+            ->fromSub(
+                DB::query()
+                    ->fromSub($incomePaymentsSub, 'p')
+                    ->selectRaw('date, income')
+                    ->unionAll(
+                        DB::query()->fromSub($incomeSalesSub, 's')->selectRaw('date, income'),
+                    ),
+                'income_rows',
+            )
+            ->selectRaw('date, SUM(income) as income')
             ->groupBy('date');
 
         $expenseSub = DB::table('expenses')

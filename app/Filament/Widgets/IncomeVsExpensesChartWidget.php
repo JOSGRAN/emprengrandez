@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Expense;
 use App\Models\Payment;
+use App\Models\Sale;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Filament\Widgets\LineChartWidget;
@@ -49,8 +50,22 @@ class IncomeVsExpensesChartWidget extends LineChartWidget
                 $incomeQuery->where('created_by', (int) $filter);
             }
 
-            $incomeRows = $incomeQuery
+            $paymentIncomeRows = $incomeQuery
                 ->select(DB::raw('DATE(paid_on) as d'), DB::raw('SUM(amount) as total'))
+                ->groupBy('d')
+                ->pluck('total', 'd')
+                ->all();
+
+            $salesQuery = Sale::query()
+                ->where('status', 'posted')
+                ->whereBetween('sold_on', [$start->toDateString(), $end->toDateString()]);
+
+            if ($filter !== 'all') {
+                $salesQuery->where('created_by', (int) $filter);
+            }
+
+            $salesIncomeRows = $salesQuery
+                ->select(DB::raw('DATE(sold_on) as d'), DB::raw('SUM(total) as total'))
                 ->groupBy('d')
                 ->pluck('total', 'd')
                 ->all();
@@ -72,7 +87,7 @@ class IncomeVsExpensesChartWidget extends LineChartWidget
             $expenses = [];
 
             foreach (array_keys($days) as $day) {
-                $income[] = (float) ($incomeRows[$day] ?? 0);
+                $income[] = (float) ($paymentIncomeRows[$day] ?? 0) + (float) ($salesIncomeRows[$day] ?? 0);
                 $expenses[] = (float) ($expenseRows[$day] ?? 0);
             }
 
