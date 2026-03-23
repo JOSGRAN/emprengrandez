@@ -100,10 +100,72 @@ class PaymentService
             });
 
         $credit->balance = CreditService::fromCents($balanceCents);
-        if ($balanceCents <= 0) {
-            $credit->status = 'closed';
-        }
+        $credit->status = $balanceCents <= 0 ? 'closed' : 'active';
         $credit->save();
+    }
+
+    public function rebuildCreditFromPayments(Credit $credit, ?int $excludePaymentId = null): void
+    {
+        DB::transaction(function () use ($credit, $excludePaymentId) {
+            $credit = Credit::query()->lockForUpdate()->findOrFail($credit->id);
+
+            $today = CarbonImmutable::today();
+
+            $installments = $credit->installments()
+                ->orderBy('due_date')
+                ->orderBy('number')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($installments as $i) {
+                $i->paid_amount = 0;
+                $i->paid_at = null;
+                $i->status = 'pending';
+                $i->save();
+            }
+
+            $paymentsQuery = Payment::query()
+                ->where('credit_id', $credit->id)
+                ->where('status', 'posted')
+                ->orderBy('paid_on')
+                ->orderBy('id');
+
+            if ($excludePaymentId) {
+                $paymentsQuery->where('id', '!=', $excludePaymentId);
+            }
+
+            $payments = $paymentsQuery->get();
+
+            $installmentsById = $installments->keyBy('id');
+
+            foreach ($payments as $payment) {
+                $amountCents = CreditService::toCents((string) $payment->amount);
+                if ($amountCents <= 0) {
+                    continue;
+                }
+
+                $paidOn = CarbonImmutable::parse((string) $payment->paid_on);
+
+                if ($payment->installment_id && $installmentsById->has($payment->installment_id)) {
+                    $amountCents = $this->applyAmountToInstallment($installmentsById->get($payment->installment_id), $amountCents, $paidOn);
+                }
+
+                if ($amountCents <= 0) {
+                    continue;
+                }
+
+                foreach ($installments as $target) {
+                    if ($amountCents <= 0) {
+                        break;
+                    }
+
+                    $amountCents = $this->applyAmountToInstallment($target, $amountCents, $paidOn);
+                }
+            }
+
+            $this->markOverdueInstallments($credit, $today);
+            $this->recalculateCreditBalance($credit);
+        });
     }
 
     private function applyAmountToInstallment(Installment $installment, int $amountCents, CarbonImmutable $paidOn): int

@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Setting;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class WalletService
@@ -57,6 +59,8 @@ class WalletService
             $wallet->balance = CreditService::fromCents($newBalanceCents);
             $wallet->save();
 
+            $this->forgetDashboardCaches();
+
             return $transaction;
         });
     }
@@ -69,5 +73,45 @@ class WalletService
             ->where('reference_id', $referenceId)
             ->where('is_reversal', $isReversal)
             ->exists();
+    }
+
+    public function deleteTransactionForReference(int $walletId, string $referenceType, int $referenceId): void
+    {
+        DB::transaction(function () use ($walletId, $referenceType, $referenceId) {
+            $wallet = Wallet::query()->lockForUpdate()->findOrFail($walletId);
+
+            WalletTransaction::query()
+                ->where('wallet_id', $walletId)
+                ->where('reference_type', $referenceType)
+                ->where('reference_id', $referenceId)
+                ->where('is_reversal', false)
+                ->delete();
+
+            $this->syncWalletBalance($wallet->id);
+            $this->forgetDashboardCaches();
+        });
+    }
+
+    public function syncWalletBalance(int $walletId): void
+    {
+        DB::transaction(function () use ($walletId) {
+            $wallet = Wallet::query()->lockForUpdate()->findOrFail($walletId);
+
+            $sumCents = (int) WalletTransaction::query()
+                ->where('wallet_id', $walletId)
+                ->get(['amount'])
+                ->sum(fn (WalletTransaction $tx): int => CreditService::toCents((string) $tx->amount));
+
+            $wallet->balance = CreditService::fromCents($sumCents);
+            $wallet->save();
+        });
+    }
+
+    private function forgetDashboardCaches(): void
+    {
+        $today = CarbonImmutable::today();
+
+        Cache::forget('dashboard:wallet-stats:'.$today->format('Y-m'));
+        Cache::forget('dashboard:finance-stats:'.$today->toDateString());
     }
 }

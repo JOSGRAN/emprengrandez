@@ -2,7 +2,9 @@
 
 namespace App\Observers;
 
+use App\Models\Credit;
 use App\Models\Payment;
+use App\Services\PaymentService;
 use App\Services\WalletService;
 
 class PaymentObserver
@@ -42,6 +44,40 @@ class PaymentObserver
             referenceType: 'payment',
             referenceId: $payment->id,
             isReversal: false,
+        );
+    }
+
+    public function deleting(Payment $payment): void
+    {
+        if ($payment->status !== 'posted') {
+            return;
+        }
+
+        if (! $payment->wallet_id) {
+            return;
+        }
+
+        app(WalletService::class)->deleteTransactionForReference(
+            walletId: (int) $payment->wallet_id,
+            referenceType: 'payment',
+            referenceId: (int) $payment->id,
+        );
+    }
+
+    public function deleted(Payment $payment): void
+    {
+        if (! $payment->credit_id) {
+            return;
+        }
+
+        $credit = Credit::query()->find($payment->credit_id);
+        if (! $credit) {
+            return;
+        }
+
+        app(PaymentService::class)->rebuildCreditFromPayments(
+            credit: $credit,
+            excludePaymentId: (int) $payment->id,
         );
     }
 }

@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Models\Expense;
 use App\Models\Payment;
+use App\Models\Purchase;
 use App\Models\Sale;
 use App\Observers\ExpenseObserver;
 use App\Observers\PaymentObserver;
+use App\Observers\PurchaseObserver;
 use App\Observers\SaleObserver;
 use BezhanSalleh\FilamentLanguageSwitch\LanguageSwitch;
 use Illuminate\Support\ServiceProvider;
@@ -33,5 +35,6 @@ class AppServiceProvider extends ServiceProvider
         Payment::observe(PaymentObserver::class);
         Expense::observe(ExpenseObserver::class);
         Sale::observe(SaleObserver::class);
+        Purchase::observe(PurchaseObserver::class);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Expense;
 use App\Models\Payment;
+use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -83,12 +84,26 @@ class IncomeVsExpensesChartWidget extends LineChartWidget
                 ->pluck('total', 'd')
                 ->all();
 
+            $purchaseQuery = Purchase::query()
+                ->where('status', 'paid')
+                ->whereBetween('purchased_on', [$start->toDateString(), $end->toDateString()]);
+
+            if ($filter !== 'all') {
+                $purchaseQuery->where('created_by', (int) $filter);
+            }
+
+            $purchaseRows = $purchaseQuery
+                ->select(DB::raw('DATE(purchased_on) as d'), DB::raw('SUM(total) as total'))
+                ->groupBy('d')
+                ->pluck('total', 'd')
+                ->all();
+
             $income = [];
             $expenses = [];
 
             foreach (array_keys($days) as $day) {
                 $income[] = (float) ($paymentIncomeRows[$day] ?? 0) + (float) ($salesIncomeRows[$day] ?? 0);
-                $expenses[] = (float) ($expenseRows[$day] ?? 0);
+                $expenses[] = (float) ($expenseRows[$day] ?? 0) + (float) ($purchaseRows[$day] ?? 0);
             }
 
             return [

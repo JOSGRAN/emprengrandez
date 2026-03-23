@@ -40,4 +40,17 @@ class ExpenseObserver
             isReversal: false,
         );
     }
+
+    public function deleting(Expense $expense): void
+    {
+        if (! $expense->wallet_id) {
+            return;
+        }
+
+        app(WalletService::class)->deleteTransactionForReference(
+            walletId: (int) $expense->wallet_id,
+            referenceType: 'expense',
+            referenceId: (int) $expense->id,
+        );
+    }
 }

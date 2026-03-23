@@ -118,12 +118,14 @@ class CashFlowReport extends Page implements HasForms, HasTable
 
         $incomePaymentsSub = DB::table('payments')
             ->where('status', 'posted')
+            ->whereNull('deleted_at')
             ->whereBetween('paid_on', [$from, $to])
             ->selectRaw('DATE(paid_on) as date, SUM(amount) as income')
             ->groupBy('date');
 
         $incomeSalesSub = DB::table('sales')
             ->where('status', 'posted')
+            ->whereNull('deleted_at')
             ->whereBetween('sold_on', [$from, $to])
             ->selectRaw('DATE(sold_on) as date, SUM(total) as income')
             ->groupBy('date');
@@ -142,8 +144,29 @@ class CashFlowReport extends Page implements HasForms, HasTable
             ->groupBy('date');
 
         $expenseSub = DB::table('expenses')
+            ->whereNull('deleted_at')
             ->whereBetween('occurred_on', [$from, $to])
             ->selectRaw('DATE(occurred_on) as date, SUM(amount) as expense')
+            ->groupBy('date');
+
+        $purchaseExpenseSub = DB::table('purchases')
+            ->where('status', 'paid')
+            ->whereNull('deleted_at')
+            ->whereBetween('purchased_on', [$from, $to])
+            ->selectRaw('DATE(purchased_on) as date, SUM(total) as expense')
+            ->groupBy('date');
+
+        $expenseSub = DB::query()
+            ->fromSub(
+                DB::query()
+                    ->fromSub($expenseSub, 'e')
+                    ->selectRaw('date, expense')
+                    ->unionAll(
+                        DB::query()->fromSub($purchaseExpenseSub, 'p')->selectRaw('date, expense'),
+                    ),
+                'expense_rows',
+            )
+            ->selectRaw('date, SUM(expense) as expense')
             ->groupBy('date');
 
         $datesSub = DB::query()

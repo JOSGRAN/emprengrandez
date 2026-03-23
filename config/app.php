@@ -54,6 +54,12 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'secure_headers' => (bool) env('SECURE_HEADERS', true),
+
+    'hsts' => (bool) env('HSTS', true),
+
+    'csp' => env('CSP', null),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

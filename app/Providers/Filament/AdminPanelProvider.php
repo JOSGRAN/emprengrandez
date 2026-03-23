@@ -2,6 +2,9 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\DeviceSessions;
+use App\Filament\Pages\ManualOperativo;
 use App\Filament\Widgets\CollectionsStatsWidget;
 use App\Filament\Widgets\CreditsGeneratedChartWidget;
 use App\Filament\Widgets\FinanceStatsWidget;
@@ -15,7 +18,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
+use Filament\Navigation\MenuItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Assets\Css;
@@ -44,13 +47,25 @@ class AdminPanelProvider extends PanelProvider
             ->assets([
                 Css::make('admin-theme')->html(fn (): string => Vite::asset('resources/css/filament/admin/theme.css')),
             ])
+            ->userMenuItems([
+                'manual-operativo' => MenuItem::make()
+                    ->label('Ver tutorial')
+                    ->icon('heroicon-m-book-open')
+                    ->url(fn (): string => ManualOperativo::getUrl())
+                    ->sort(10),
+                'device-sessions' => MenuItem::make()
+                    ->label('Dispositivos')
+                    ->icon('heroicon-m-device-phone-mobile')
+                    ->url(fn (): string => DeviceSessions::getUrl())
+                    ->sort(11),
+            ])
             ->plugins([
                 FilamentShieldPlugin::make(),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
@@ -70,6 +85,7 @@ class AdminPanelProvider extends PanelProvider
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
                 AuthenticateSession::class,
+                TrackUserSession::class,
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
