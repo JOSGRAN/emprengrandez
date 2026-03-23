@@ -50,7 +50,4 @@ RUN chmod +x /entrypoint.sh
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=frontend /app/public/build ./public/build
-
-RUN composer dump-autoload --no-dev --optimize --no-interaction --no-progress
-
 ENTRYPOINT ["/entrypoint.sh"]
