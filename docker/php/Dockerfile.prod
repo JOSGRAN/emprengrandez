@@ -50,4 +50,8 @@ RUN chmod +x /entrypoint.sh
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=frontend /app/public/build ./public/build
+
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache \
+    && chmod -R ug+rwX storage bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache || true
 ENTRYPOINT ["/entrypoint.sh"]
