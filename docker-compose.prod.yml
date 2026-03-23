@@ -33,6 +33,7 @@ services:
         condition: service_started
     env_file:
       - .env
+    command: php-fpm
     restart: unless-stopped
 
   nginx:

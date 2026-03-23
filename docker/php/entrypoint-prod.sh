@@ -17,4 +17,8 @@ if [ "${APP_ENV:-}" = "production" ]; then
   php artisan view:cache || true
 fi
 
+if [ "$#" -eq 0 ]; then
+  set -- php-fpm
+fi
+
 exec "$@"
