@@ -19,6 +19,11 @@ class SendWhatsAppMessageJob implements ShouldQueue
 
     public function __construct(public int $logId) {}
 
+    public function backoff(): array
+    {
+        return [10, 30, 60];
+    }
+
     public function handle(WhatsAppService $service): void
     {
         $log = WhatsAppMessageLog::query()->findOrFail($this->logId);

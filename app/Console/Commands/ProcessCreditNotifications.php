@@ -32,13 +32,42 @@ class ProcessCreditNotifications extends Command
     public function handle()
     {
         $today = CarbonImmutable::today();
-        $dueSoonDays = Setting::getInt('notifications.due_soon_days', 1);
-        $dueSoonDate = $today->addDays(max(0, $dueSoonDays));
+        $daysBeforeList = $this->getDueSoonDaysBeforeList();
 
-        $this->processDueSoon($today, $dueSoonDate, $dueSoonDays);
+        foreach ($daysBeforeList as $daysBefore) {
+            $dueSoonDate = $today->addDays(max(0, $daysBefore));
+            $this->processDueSoon($today, $dueSoonDate, $daysBefore);
+        }
         $this->processOverdue($today);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function getDueSoonDaysBeforeList(): array
+    {
+        $raw = Setting::getString('notifications.due_soon_days_list', '');
+
+        $values = [];
+        foreach (explode(',', $raw) as $part) {
+            $part = trim($part);
+            if ($part === '' || ! is_numeric($part)) {
+                continue;
+            }
+            $values[] = (int) $part;
+        }
+
+        $values = array_values(array_unique(array_filter($values, fn (int $v): bool => $v >= 0)));
+
+        if (count($values) === 0) {
+            $values = [Setting::getInt('notifications.due_soon_days', 1)];
+        }
+
+        rsort($values);
+
+        return $values;
     }
 
     private function processDueSoon(CarbonImmutable $today, CarbonImmutable $dueSoonDate, int $daysBefore): void

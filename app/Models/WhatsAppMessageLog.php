@@ -20,6 +20,8 @@ class WhatsAppMessageLog extends Model
         'to',
         'message',
         'status',
+        'fingerprint',
+        'context',
         'provider_message_id',
         'attempts',
         'last_error',
@@ -32,6 +34,7 @@ class WhatsAppMessageLog extends Model
     {
         return [
             'sent_at' => 'datetime',
+            'context' => 'array',
             'provider_payload' => 'array',
             'provider_response' => 'array',
         ];
