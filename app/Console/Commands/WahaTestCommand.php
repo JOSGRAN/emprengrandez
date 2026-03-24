@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 class WahaTestCommand extends Command
 {
-    protected $signature = 'waha:test {to} {message?}';
+    protected $signature = 'waha:test {to} {message?} {--session=}';
 
     protected $description = 'Enviar un mensaje de prueba por WAHA.';
 
@@ -15,6 +15,11 @@ class WahaTestCommand extends Command
     {
         $to = (string) $this->argument('to');
         $message = (string) ($this->argument('message') ?? 'Mensaje de prueba desde Emprengrandez.');
+        $session = (string) ($this->option('session') ?? '');
+
+        if ($session !== '') {
+            config(['services.waha.session' => $session]);
+        }
 
         $service->sendTextMessage($to, $message);
 

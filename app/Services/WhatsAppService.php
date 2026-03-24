@@ -15,21 +15,25 @@ class WhatsAppService
         $baseUrl = rtrim((string) config('services.waha.base_url'), '/');
         $apiKey = (string) config('services.waha.api_key');
         $path = (string) config('services.waha.send_text_path');
+        $session = (string) config('services.waha.session', 'default');
 
         if ($baseUrl === '' || $apiKey === '') {
             throw new \RuntimeException('WAHA credentials are not configured.');
+        }
+        if ($session === '') {
+            throw new \RuntimeException('WAHA session is not configured.');
         }
 
         $payload = [
             'to' => $this->normalizePhone($to),
             'message' => $message,
+            'session' => $session,
         ];
 
         $response = Http::baseUrl($baseUrl)
             ->withHeaders([
                 'X-Api-Key' => $apiKey,
             ])
-            ->withToken($apiKey)
             ->acceptJson()
             ->asJson()
             ->post($path, $payload)

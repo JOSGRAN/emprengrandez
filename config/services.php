@@ -40,6 +40,7 @@ return [
         'api_key' => env('WAHA_API_KEY'),
         'send_text_path' => env('WAHA_SEND_TEXT_PATH', '/api/sendText'),
         'default_country_code' => env('WAHA_DEFAULT_COUNTRY_CODE', '51'),
+        'session' => env('WAHA_SESSION', 'default'),
     ],
 
 ];
