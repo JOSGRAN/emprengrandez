@@ -31,13 +31,21 @@ class SendWhatsAppMessageJob implements ShouldQueue
         $log->status = 'sending';
         $log->save();
 
-        $result = $service->sendTextMessage($log->to, $log->message);
+        try {
+            $result = $service->sendTextMessage($log->to, $log->message);
 
-        $log->status = 'sent';
-        $log->sent_at = now();
-        $log->provider_payload = $result['payload'] ?? null;
-        $log->provider_response = $result['response'] ?? null;
-        $log->save();
+            $log->status = 'sent';
+            $log->sent_at = now();
+            $log->provider_payload = $result['payload'] ?? null;
+            $log->provider_response = $result['response'] ?? null;
+            $log->save();
+        } catch (\Throwable $e) {
+            $log->status = 'failed';
+            $log->last_error = $e->getMessage();
+            $log->save();
+
+            throw $e;
+        }
     }
 
     public function failed(\Throwable $e): void
