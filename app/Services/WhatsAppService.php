@@ -25,8 +25,8 @@ class WhatsAppService
         }
 
         $payload = [
-            'to' => $this->normalizePhone($to),
-            'message' => $message,
+            'chatId' => $this->normalizeChatId($to),
+            'text' => $message,
             'session' => $session,
         ];
 
@@ -61,6 +61,19 @@ class WhatsAppService
             $digits = $defaultCountry.$digits;
         }
 
-        return '+'.$digits;
+        return $digits;
+    }
+
+    public function normalizeChatId(string $to): string
+    {
+        $normalized = trim($to);
+
+        if (Str::contains($normalized, '@')) {
+            return $normalized;
+        }
+
+        $digits = $this->normalizePhone($normalized);
+
+        return $digits.'@c.us';
     }
 }
