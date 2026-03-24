@@ -41,7 +41,7 @@ class NotificationTemplateResource extends Resource
                             ->maxLength(120),
                         Forms\Components\TextInput::make('channel')
                             ->label('Canal')
-                            ->default('wava')
+                            ->default('waha')
                             ->disabled()
                             ->dehydrated(),
                         Forms\Components\Select::make('event')

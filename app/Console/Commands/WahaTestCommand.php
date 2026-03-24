@@ -5,11 +5,11 @@ namespace App\Console\Commands;
 use App\Services\WhatsAppService;
 use Illuminate\Console\Command;
 
-class WavaTestCommand extends Command
+class WahaTestCommand extends Command
 {
-    protected $signature = 'wava:test {to} {message?}';
+    protected $signature = 'waha:test {to} {message?}';
 
-    protected $description = 'Enviar un mensaje de prueba por WAHA/WAVA.';
+    protected $description = 'Enviar un mensaje de prueba por WAHA.';
 
     public function handle(WhatsAppService $service): int
     {

@@ -97,3 +97,21 @@ Antes de producción:
 - Crear: compra, venta, crédito, pago, gasto (flujo completo)
 - Reportes: flujo de caja, morosidad, estado de cartera
 
+## WAHA (WhatsApp) - Integración
+
+La app se conecta a WAHA usando `WhatsAppService` con configuración en `config('services.waha.*')`.
+
+Variables `.env`:
+
+```
+WAHA_BASE_URL=http://waha:3000
+WAHA_API_KEY=dev_key
+WAHA_SEND_TEXT_PATH=/api/sendText
+WAHA_DEFAULT_COUNTRY_CODE=51
+```
+
+Probar envío manual:
+
+```
+docker compose exec php php artisan waha:test 51980162014 "Mensaje de prueba"
+```

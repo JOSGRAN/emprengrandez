@@ -82,9 +82,9 @@ class InitialSeeder extends Seeder
         Setting::setValue('notifications.overdue_reminder_every_days', 1, type: 'int', description: 'Frecuencia (días) para recordar cuotas vencidas.');
 
         NotificationTemplate::query()->firstOrCreate(
-            ['key' => 'wava_credit_created'],
+            ['key' => 'waha_credit_created'],
             [
-                'channel' => 'wava',
+                'channel' => 'waha',
                 'event' => 'credit_created',
                 'enabled' => true,
                 'body' => 'Hola {{cliente}}, tu crédito {{credito}} fue creado por S/ {{monto}}.',
@@ -93,9 +93,9 @@ class InitialSeeder extends Seeder
         );
 
         NotificationTemplate::query()->firstOrCreate(
-            ['key' => 'wava_installment_due_soon'],
+            ['key' => 'waha_installment_due_soon'],
             [
-                'channel' => 'wava',
+                'channel' => 'waha',
                 'event' => 'installment_due_soon',
                 'enabled' => true,
                 'body' => 'Hola {{cliente}}, tu cuota vence el {{fecha}} por S/ {{monto}}.',
@@ -104,9 +104,9 @@ class InitialSeeder extends Seeder
         );
 
         NotificationTemplate::query()->firstOrCreate(
-            ['key' => 'wava_installment_overdue'],
+            ['key' => 'waha_installment_overdue'],
             [
-                'channel' => 'wava',
+                'channel' => 'waha',
                 'event' => 'installment_overdue',
                 'enabled' => true,
                 'body' => 'Hola {{cliente}}, tu cuota #{{cuota}} está vencida. Monto: S/ {{monto}}.',
@@ -115,9 +115,9 @@ class InitialSeeder extends Seeder
         );
 
         NotificationTemplate::query()->firstOrCreate(
-            ['key' => 'wava_payment_received'],
+            ['key' => 'waha_payment_received'],
             [
-                'channel' => 'wava',
+                'channel' => 'waha',
                 'event' => 'payment_received',
                 'enabled' => true,
                 'body' => 'Hola {{cliente}}, pago recibido correctamente por S/ {{monto}}.',

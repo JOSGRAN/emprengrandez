@@ -207,7 +207,7 @@ class NotificationService
         ?int $paymentId = null,
     ): WhatsAppMessageLog {
         $log = WhatsAppMessageLog::query()->create([
-            'channel' => 'wava',
+            'channel' => 'waha',
             'event' => $event,
             'customer_id' => $customerId,
             'credit_id' => $creditId,
@@ -242,11 +242,11 @@ class NotificationService
 
     private function getTemplate(string $event): ?NotificationTemplate
     {
-        $cacheKey = 'notification-template:wava:'.$event;
+        $cacheKey = 'notification-template:waha:'.$event;
 
         return Cache::remember($cacheKey, 300, function () use ($event) {
             return NotificationTemplate::query()
-                ->where('channel', 'wava')
+                ->where('channel', 'waha')
                 ->where('event', $event)
                 ->where('enabled', true)
                 ->first();

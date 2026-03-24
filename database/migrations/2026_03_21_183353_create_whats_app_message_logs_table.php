@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('whats_app_message_logs', function (Blueprint $table) {
             $table->id();
-            $table->string('channel', 30)->default('wava')->index();
+            $table->string('channel', 30)->default('waha')->index();
             $table->string('event', 50)->index();
             $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('credit_id')->nullable()->constrained()->nullOnDelete();

@@ -35,11 +35,11 @@ return [
         ],
     ],
 
-    'wava' => [
-        'base_url' => env('WAVA_BASE_URL'),
-        'token' => env('WAVA_TOKEN'),
-        'send_text_path' => env('WAVA_SEND_TEXT_PATH', '/messages/text'),
-        'default_country_code' => env('WAVA_DEFAULT_COUNTRY_CODE', '51'),
+    'waha' => [
+        'base_url' => env('WAHA_BASE_URL'),
+        'api_key' => env('WAHA_API_KEY'),
+        'send_text_path' => env('WAHA_SEND_TEXT_PATH', '/api/sendText'),
+        'default_country_code' => env('WAHA_DEFAULT_COUNTRY_CODE', '51'),
     ],
 
 ];

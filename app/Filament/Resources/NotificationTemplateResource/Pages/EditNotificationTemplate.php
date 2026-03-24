@@ -14,7 +14,7 @@ class EditNotificationTemplate extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->getRecord();
-        Cache::forget('notification-template:wava:'.$record->event);
+        Cache::forget('notification-template:waha:'.$record->event);
     }
 
     protected function getHeaderActions(): array

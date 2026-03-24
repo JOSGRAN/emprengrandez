@@ -12,12 +12,12 @@ class WhatsAppService
      */
     public function sendTextMessage(string $to, string $message): array
     {
-        $baseUrl = rtrim((string) config('services.wava.base_url'), '/');
-        $token = (string) config('services.wava.token');
-        $path = (string) config('services.wava.send_text_path');
+        $baseUrl = rtrim((string) config('services.waha.base_url'), '/');
+        $apiKey = (string) config('services.waha.api_key');
+        $path = (string) config('services.waha.send_text_path');
 
-        if ($baseUrl === '' || $token === '') {
-            throw new \RuntimeException('Wava credentials are not configured.');
+        if ($baseUrl === '' || $apiKey === '') {
+            throw new \RuntimeException('WAHA credentials are not configured.');
         }
 
         $payload = [
@@ -26,7 +26,10 @@ class WhatsAppService
         ];
 
         $response = Http::baseUrl($baseUrl)
-            ->withToken($token)
+            ->withHeaders([
+                'X-Api-Key' => $apiKey,
+            ])
+            ->withToken($apiKey)
             ->acceptJson()
             ->asJson()
             ->post($path, $payload)
@@ -41,7 +44,7 @@ class WhatsAppService
     public function normalizePhone(string $phone): string
     {
         $digits = preg_replace('/\D+/', '', $phone) ?? '';
-        $defaultCountry = preg_replace('/\D+/', '', (string) config('services.wava.default_country_code')) ?? '';
+        $defaultCountry = preg_replace('/\D+/', '', (string) config('services.waha.default_country_code')) ?? '';
 
         if ($digits === '') {
             return $phone;

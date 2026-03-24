@@ -13,6 +13,6 @@ class CreateNotificationTemplate extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->getRecord();
-        Cache::forget('notification-template:wava:'.$record->event);
+        Cache::forget('notification-template:waha:'.$record->event);
     }
 }
