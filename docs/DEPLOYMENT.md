@@ -110,6 +110,10 @@ WAHA_SEND_TEXT_PATH=/api/sendText
 WAHA_DEFAULT_COUNTRY_CODE=51
 ```
 
+Notas:
+
+- En producción, el contenedor `waha` publica por defecto el dashboard en el puerto `3001` (`3001:3000`) para evitar choques con otros proyectos.
+
 Probar envío manual:
 
 ```

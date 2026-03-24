@@ -86,7 +86,7 @@ services:
       WHATSAPP_SWAGGER_USERNAME: ${WHATSAPP_SWAGGER_USERNAME:-api}
       WHATSAPP_SWAGGER_PASSWORD: ${WHATSAPP_SWAGGER_PASSWORD:-api}
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - waha_sessions:/app/.sessions
 
