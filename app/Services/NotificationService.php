@@ -25,16 +25,37 @@ class NotificationService
             return null;
         }
 
+        $items = $credit->items()->with(['product'])->get();
+        $productsText = $items
+            ->map(function ($item): string {
+                $name = (string) optional($item->product)->name;
+                $qty = (int) ($item->quantity ?? 0);
+                if ($name === '') {
+                    return '';
+                }
+
+                return $qty > 1 ? ($name.' x'.$qty) : $name;
+            })
+            ->filter()
+            ->values()
+            ->implode(', ');
+
+        if ($productsText === '') {
+            $productsText = '-';
+        }
+
         $vars = [
             'cliente' => $customer->name,
             'credito' => $credit->code,
-            'monto' => number_format((float) $credit->total_amount, 2, '.', ''),
+            'monto_total' => number_format((float) $credit->total_amount, 2, '.', ''),
+            'cuotas' => (string) ((int) ($credit->installments_count ?? $credit->installments()->count())),
+            'productos' => $productsText,
         ];
 
         $message = $this->render(
             event: 'credit_created',
             vars: $vars,
-            fallback: 'Hola {{cliente}}, tu crédito {{credito}} fue creado por S/ {{monto}}.',
+            fallback: "Hola {{cliente}} 👋\n\nTu crédito ha sido registrado correctamente.\n\n📦 Productos: {{productos}}\n💰 Total: S/ {{monto_total}}\n📅 Cuotas: {{cuotas}}\n\nTe avisaremos antes de cada vencimiento.\n\nGracias 🙌",
         );
 
         return $this->queueMessage(
@@ -43,6 +64,9 @@ class NotificationService
             message: $message,
             customerId: $customer->id,
             creditId: $credit->id,
+            context: [
+                'credit_id' => (int) $credit->id,
+            ],
         );
     }
 
@@ -57,15 +81,22 @@ class NotificationService
             return null;
         }
 
+        $creditCode = (string) optional($payment->credit)->code;
+        $installmentNumber = $payment->installment ? (string) $payment->installment->number : '';
+        $paidOn = $payment->paid_on ? CarbonImmutable::parse($payment->paid_on) : CarbonImmutable::today();
+
         $vars = [
             'cliente' => $customer->name,
             'monto' => number_format((float) $payment->amount, 2, '.', ''),
+            'fecha' => $paidOn->format('d/m/Y'),
+            'credito' => $creditCode !== '' ? $creditCode : (string) ($payment->credit_id ?? ''),
+            'cuota' => $installmentNumber,
         ];
 
         $message = $this->render(
             event: 'payment_received',
             vars: $vars,
-            fallback: 'Hola {{cliente}}, pago recibido correctamente por S/ {{monto}}.',
+            fallback: "Hola {{cliente}} 👋\n\nHemos recibido tu pago correctamente ✅\n\n💰 Monto: S/ {{monto}}\n📅 Fecha: {{fecha}}\n\nGracias por tu puntualidad 🙌",
         );
 
         return $this->queueMessage(
@@ -76,6 +107,9 @@ class NotificationService
             creditId: $payment->credit_id,
             installmentId: $payment->installment_id,
             paymentId: $payment->id,
+            context: [
+                'payment_id' => (int) $payment->id,
+            ],
         );
     }
 
@@ -98,16 +132,17 @@ class NotificationService
 
         $vars = [
             'cliente' => $customer->name,
-            'fecha' => $dueDate->format('Y-m-d'),
+            'fecha' => $dueDate->format('d/m/Y'),
             'monto' => number_format((float) $installment->total_amount, 2, '.', ''),
             'cuota' => (string) $installment->number,
             'credito' => $credit->code,
+            'dias' => (string) $daysBefore,
         ];
 
         $message = $this->render(
             event: 'installment_due_soon',
             vars: $vars,
-            fallback: 'Hola {{cliente}}, tu cuota vence el {{fecha}} por S/ {{monto}}.',
+            fallback: "Hola {{cliente}} 👋\n\nTe recordamos que tu cuota vence pronto:\n\n📅 Fecha: {{fecha}}\n💰 Monto: S/ {{monto}}\n\nEvita retrasos realizando tu pago a tiempo 🙌",
         );
 
         return $this->queueMessage(
@@ -117,6 +152,10 @@ class NotificationService
             customerId: $customer->id,
             creditId: $credit->id,
             installmentId: $installment->id,
+            context: [
+                'days_before' => $daysBefore,
+                'due_date' => (string) $installment->due_date,
+            ],
         );
     }
 
@@ -132,18 +171,24 @@ class NotificationService
             return null;
         }
 
+        $dueDate = CarbonImmutable::parse($installment->due_date);
+        $today = CarbonImmutable::today();
+        $daysOverdue = $dueDate->startOfDay()->diffInDays($today->startOfDay());
+        $pending = max(0, (float) $installment->total_amount - (float) $installment->paid_amount);
+
         $vars = [
             'cliente' => $customer->name,
             'cuota' => (string) $installment->number,
-            'monto' => number_format((float) $installment->total_amount, 2, '.', ''),
-            'fecha' => CarbonImmutable::parse($installment->due_date)->format('Y-m-d'),
+            'fecha' => $dueDate->format('d/m/Y'),
             'credito' => $credit->code,
+            'monto_pendiente' => number_format($pending, 2, '.', ''),
+            'dias_vencido' => (string) $daysOverdue,
         ];
 
         $message = $this->render(
             event: 'installment_overdue',
             vars: $vars,
-            fallback: 'Hola {{cliente}}, tu cuota #{{cuota}} está vencida. Monto: S/ {{monto}}.',
+            fallback: "Hola {{cliente}} 👋\n\nTu cuota está vencida:\n\n📅 Fecha: {{fecha}}\n💰 Monto pendiente: S/ {{monto_pendiente}}\n\nPor favor regulariza tu pago lo antes posible 🙏",
         );
 
         return $this->queueMessage(
@@ -153,6 +198,9 @@ class NotificationService
             customerId: $customer->id,
             creditId: $credit->id,
             installmentId: $installment->id,
+            context: [
+                'due_date' => (string) $installment->due_date,
+            ],
         );
     }
 
@@ -175,7 +223,7 @@ class NotificationService
         $dueDate = CarbonImmutable::parse($installment->due_date);
         $vars = [
             'cliente' => $customer->name,
-            'fecha' => $dueDate->format('Y-m-d'),
+            'fecha' => $dueDate->format('d/m/Y'),
             'monto' => number_format((float) $installment->total_amount, 2, '.', ''),
             'cuota' => (string) $installment->number,
             'credito' => $credit->code,
@@ -184,7 +232,7 @@ class NotificationService
         $message = $this->render(
             event: 'installment_due_soon',
             vars: $vars,
-            fallback: 'Hola {{cliente}}, tu cuota vence el {{fecha}} por S/ {{monto}}.',
+            fallback: "Hola {{cliente}} 👋\n\nTe recordamos que tu cuota vence pronto:\n\n📅 Fecha: {{fecha}}\n💰 Monto: S/ {{monto}}\n\nEvita retrasos realizando tu pago a tiempo 🙌",
         );
 
         return $this->queueMessage(
@@ -194,6 +242,11 @@ class NotificationService
             customerId: $customer->id,
             creditId: $credit->id,
             installmentId: $installment->id,
+            context: [
+                'manual' => true,
+                'due_date' => (string) $installment->due_date,
+            ],
+            forceSend: true,
         );
     }
 
@@ -205,7 +258,31 @@ class NotificationService
         ?int $creditId = null,
         ?int $installmentId = null,
         ?int $paymentId = null,
-    ): WhatsAppMessageLog {
+        array $context = [],
+        bool $forceSend = false,
+    ): ?WhatsAppMessageLog {
+        if (! $forceSend && ! $this->canSendNow()) {
+            return null;
+        }
+
+        if (! $forceSend && $customerId && $this->exceedsDailyLimit($customerId)) {
+            return null;
+        }
+
+        $fingerprint = $this->fingerprint(
+            event: $event,
+            to: $to,
+            customerId: $customerId,
+            creditId: $creditId,
+            installmentId: $installmentId,
+            paymentId: $paymentId,
+            context: $context,
+        );
+
+        if (WhatsAppMessageLog::query()->where('fingerprint', $fingerprint)->exists()) {
+            return null;
+        }
+
         $log = WhatsAppMessageLog::query()->create([
             'channel' => 'waha',
             'event' => $event,
@@ -216,11 +293,73 @@ class NotificationService
             'to' => $to,
             'message' => $message,
             'status' => 'queued',
+            'fingerprint' => $fingerprint,
+            'context' => $context,
         ]);
 
         SendWhatsAppMessageJob::dispatch($log->id);
 
         return $log;
+    }
+
+    private function canSendNow(): bool
+    {
+        $startHour = Setting::getInt('notifications.send_start_hour', 9);
+        $endHour = Setting::getInt('notifications.send_end_hour', 19);
+
+        $startHour = max(0, min(23, $startHour));
+        $endHour = max(0, min(23, $endHour));
+
+        $now = CarbonImmutable::now();
+        $hour = (int) $now->format('G');
+
+        if ($startHour === $endHour) {
+            return true;
+        }
+
+        if ($startHour < $endHour) {
+            return $hour >= $startHour && $hour < $endHour;
+        }
+
+        return $hour >= $startHour || $hour < $endHour;
+    }
+
+    private function exceedsDailyLimit(int $customerId): bool
+    {
+        $max = max(1, Setting::getInt('notifications.max_daily_per_customer', 3));
+        $today = CarbonImmutable::today()->toDateString();
+
+        $count = WhatsAppMessageLog::query()
+            ->where('customer_id', $customerId)
+            ->whereDate('created_at', '=', $today)
+            ->count();
+
+        return $count >= $max;
+    }
+
+    private function fingerprint(
+        string $event,
+        string $to,
+        ?int $customerId,
+        ?int $creditId,
+        ?int $installmentId,
+        ?int $paymentId,
+        array $context,
+    ): string {
+        $today = CarbonImmutable::today()->toDateString();
+
+        $payload = [
+            'event' => $event,
+            'to' => trim($to),
+            'customer_id' => $customerId,
+            'credit_id' => $creditId,
+            'installment_id' => $installmentId,
+            'payment_id' => $paymentId,
+            'context' => $context,
+            'date' => $today,
+        ];
+
+        return hash('sha256', (string) json_encode($payload));
     }
 
     private function render(string $event, array $vars, string $fallback): string

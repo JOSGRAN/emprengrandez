@@ -79,7 +79,11 @@ class InitialSeeder extends Seeder
 
         Setting::setValue('notifications.enabled', true, type: 'bool', description: 'Habilitar envío de notificaciones.');
         Setting::setValue('notifications.due_soon_days', 1, type: 'int', description: 'Días antes del vencimiento para recordar.');
+        Setting::setValue('notifications.due_soon_days_list', '2,1', type: 'string', description: 'Lista de días antes del vencimiento (separado por comas).');
         Setting::setValue('notifications.overdue_reminder_every_days', 1, type: 'int', description: 'Frecuencia (días) para recordar cuotas vencidas.');
+        Setting::setValue('notifications.send_start_hour', 9, type: 'int', description: 'Hora inicio (0-23) para envío de notificaciones.');
+        Setting::setValue('notifications.send_end_hour', 19, type: 'int', description: 'Hora fin (0-23) para envío de notificaciones.');
+        Setting::setValue('notifications.max_daily_per_customer', 3, type: 'int', description: 'Máximo de mensajes por cliente por día.');
 
         NotificationTemplate::query()->firstOrCreate(
             ['key' => 'waha_credit_created'],
@@ -87,8 +91,8 @@ class InitialSeeder extends Seeder
                 'channel' => 'waha',
                 'event' => 'credit_created',
                 'enabled' => true,
-                'body' => 'Hola {{cliente}}, tu crédito {{credito}} fue creado por S/ {{monto}}.',
-                'variables' => ['cliente', 'credito', 'monto'],
+                'body' => "Hola {{cliente}} 👋\n\nTu crédito ha sido registrado correctamente.\n\n📦 Productos: {{productos}}\n💰 Total: S/ {{monto_total}}\n📅 Cuotas: {{cuotas}}\n\nTe avisaremos antes de cada vencimiento.\n\nGracias 🙌",
+                'variables' => ['cliente', 'credito', 'productos', 'monto_total', 'cuotas'],
             ],
         );
 
@@ -98,8 +102,8 @@ class InitialSeeder extends Seeder
                 'channel' => 'waha',
                 'event' => 'installment_due_soon',
                 'enabled' => true,
-                'body' => 'Hola {{cliente}}, tu cuota vence el {{fecha}} por S/ {{monto}}.',
-                'variables' => ['cliente', 'fecha', 'monto', 'cuota', 'credito'],
+                'body' => "Hola {{cliente}} 👋\n\nTe recordamos que tu cuota vence pronto:\n\n📅 Fecha: {{fecha}}\n💰 Monto: S/ {{monto}}\n\nEvita retrasos realizando tu pago a tiempo 🙌",
+                'variables' => ['cliente', 'credito', 'cuota', 'fecha', 'monto', 'dias'],
             ],
         );
 
@@ -109,8 +113,8 @@ class InitialSeeder extends Seeder
                 'channel' => 'waha',
                 'event' => 'installment_overdue',
                 'enabled' => true,
-                'body' => 'Hola {{cliente}}, tu cuota #{{cuota}} está vencida. Monto: S/ {{monto}}.',
-                'variables' => ['cliente', 'cuota', 'monto', 'fecha', 'credito'],
+                'body' => "Hola {{cliente}} 👋\n\nTu cuota está vencida:\n\n📅 Fecha: {{fecha}}\n💰 Monto pendiente: S/ {{monto_pendiente}}\n\nPor favor regulariza tu pago lo antes posible 🙏",
+                'variables' => ['cliente', 'credito', 'cuota', 'fecha', 'monto_pendiente', 'dias_vencido'],
             ],
         );
 
@@ -120,8 +124,8 @@ class InitialSeeder extends Seeder
                 'channel' => 'waha',
                 'event' => 'payment_received',
                 'enabled' => true,
-                'body' => 'Hola {{cliente}}, pago recibido correctamente por S/ {{monto}}.',
-                'variables' => ['cliente', 'monto'],
+                'body' => "Hola {{cliente}} 👋\n\nHemos recibido tu pago correctamente ✅\n\n💰 Monto: S/ {{monto}}\n📅 Fecha: {{fecha}}\n\nGracias por tu puntualidad 🙌",
+                'variables' => ['cliente', 'credito', 'cuota', 'monto', 'fecha'],
             ],
         );
     }
