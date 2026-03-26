@@ -5,6 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\ImageService;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -12,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ProductResource extends Resource
 {
@@ -31,6 +34,22 @@ class ProductResource extends Resource
             ->schema([
                 Forms\Components\Section::make()
                     ->schema([
+                        Forms\Components\FileUpload::make('image_path')
+                            ->label('Imagen')
+                            ->image()
+                            ->acceptedFileTypes(['image/jpeg', 'image/png'])
+                            ->maxSize(5120)
+                            ->disk('public')
+                            ->directory('products')
+                            ->visibility('public')
+                            ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
+                                return app(ImageService::class)->storeWebp(
+                                    file: $file,
+                                    folder: (string) ($component->getDirectory() ?? 'products'),
+                                    quality: 80,
+                                );
+                            })
+                            ->columnSpanFull(),
                         Forms\Components\Select::make('category_id')
                             ->label('Categoría')
                             ->options(fn (): array => Category::treeOptions())
@@ -74,6 +93,10 @@ class ProductResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('image_path')
+                    ->label('Imagen')
+                    ->disk('public')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable()
