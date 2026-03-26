@@ -21,6 +21,7 @@ class Purchase extends Model
         'status',
         'wallet_id',
         'notes',
+        'attachment_path',
         'created_by',
     ];
 

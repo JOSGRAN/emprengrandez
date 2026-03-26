@@ -5,7 +5,9 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ExpenseResource\Pages;
 use App\Models\Expense;
 use App\Models\Wallet;
+use App\Services\ImageService;
 use App\Services\WalletService;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,6 +15,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ExpenseResource extends Resource
 {
@@ -37,6 +40,22 @@ class ExpenseResource extends Resource
                             ->disabled()
                             ->dehydrated(false)
                             ->visibleOn('edit'),
+                        Forms\Components\FileUpload::make('attachment_path')
+                            ->label('Comprobante')
+                            ->image()
+                            ->acceptedFileTypes(['image/jpeg', 'image/png'])
+                            ->maxSize(5120)
+                            ->disk('public')
+                            ->directory('expenses')
+                            ->visibility('public')
+                            ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
+                                return app(ImageService::class)->storeWebp(
+                                    file: $file,
+                                    folder: (string) ($component->getDirectory() ?? 'expenses'),
+                                    quality: 80,
+                                );
+                            })
+                            ->columnSpanFull(),
                         Forms\Components\Select::make('expense_category_id')
                             ->label('Categoría')
                             ->relationship('category', 'name')
@@ -86,6 +105,10 @@ class ExpenseResource extends Resource
                     ->label('Código')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\ImageColumn::make('attachment_path')
+                    ->label('Comprobante')
+                    ->disk('public')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('occurred_on')
                     ->label('Fecha')
                     ->date()

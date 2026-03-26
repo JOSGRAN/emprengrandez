@@ -21,6 +21,7 @@ class Expense extends Model
         'payment_method',
         'vendor',
         'description',
+        'attachment_path',
         'created_by',
     ];
 

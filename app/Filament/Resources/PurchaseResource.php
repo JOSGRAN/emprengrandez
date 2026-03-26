@@ -8,7 +8,9 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\Wallet;
+use App\Services\ImageService;
 use App\Services\WalletService;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -16,6 +18,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class PurchaseResource extends Resource
 {
@@ -55,6 +58,22 @@ class PurchaseResource extends Resource
                             ->disabled()
                             ->dehydrated(false)
                             ->visibleOn('edit'),
+                        Forms\Components\FileUpload::make('attachment_path')
+                            ->label('Comprobante')
+                            ->image()
+                            ->acceptedFileTypes(['image/jpeg', 'image/png'])
+                            ->maxSize(5120)
+                            ->disk('public')
+                            ->directory('purchases')
+                            ->visibility('public')
+                            ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
+                                return app(ImageService::class)->storeWebp(
+                                    file: $file,
+                                    folder: (string) ($component->getDirectory() ?? 'purchases'),
+                                    quality: 80,
+                                );
+                            })
+                            ->columnSpanFull(),
                         Forms\Components\DatePicker::make('purchased_on')
                             ->label('Fecha')
                             ->default(now())
@@ -188,6 +207,10 @@ class PurchaseResource extends Resource
                     ->label('Código')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\ImageColumn::make('attachment_path')
+                    ->label('Comprobante')
+                    ->disk('public')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('purchased_on')
                     ->label('Fecha')
                     ->date()

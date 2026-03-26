@@ -22,6 +22,7 @@ class CreatePurchase extends CreateRecord
                 'status' => $data['status'] ?? 'paid',
                 'wallet_id' => $data['wallet_id'] ?? null,
                 'notes' => $data['notes'] ?? null,
+                'attachment_path' => $data['attachment_path'] ?? null,
                 'items' => $data['items'] ?? [],
                 'created_by' => auth()->id(),
             ]);

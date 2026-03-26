@@ -45,6 +45,7 @@ class PurchaseService
             $purchase->status = $status;
             $purchase->wallet_id = $data['wallet_id'] ?? null;
             $purchase->notes = $data['notes'] ?? null;
+            $purchase->attachment_path = $data['attachment_path'] ?? null;
             $purchase->created_by = $data['created_by'] ?? null;
             $purchase->total = CreditService::fromCents($totalCents);
             $purchase->save();
