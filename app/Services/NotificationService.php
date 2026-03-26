@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\WhatsAppMessageLog;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 
 class NotificationService
@@ -279,27 +280,46 @@ class NotificationService
             context: $context,
         );
 
-        if (WhatsAppMessageLog::query()->where('fingerprint', $fingerprint)->exists()) {
-            return null;
-        }
+        try {
+            $log = WhatsAppMessageLog::query()->create([
+                'channel' => 'waha',
+                'event' => $event,
+                'customer_id' => $customerId,
+                'credit_id' => $creditId,
+                'installment_id' => $installmentId,
+                'payment_id' => $paymentId,
+                'to' => $to,
+                'message' => $message,
+                'status' => 'queued',
+                'fingerprint' => $fingerprint,
+                'context' => $context,
+            ]);
+        } catch (QueryException $e) {
+            if ($this->isDuplicateKeyException($e)) {
+                return null;
+            }
 
-        $log = WhatsAppMessageLog::query()->create([
-            'channel' => 'waha',
-            'event' => $event,
-            'customer_id' => $customerId,
-            'credit_id' => $creditId,
-            'installment_id' => $installmentId,
-            'payment_id' => $paymentId,
-            'to' => $to,
-            'message' => $message,
-            'status' => 'queued',
-            'fingerprint' => $fingerprint,
-            'context' => $context,
-        ]);
+            throw $e;
+        }
 
         SendWhatsAppMessageJob::dispatch($log->id);
 
         return $log;
+    }
+
+    private function isDuplicateKeyException(QueryException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode() ?? '');
+        if ($sqlState !== '23000') {
+            return false;
+        }
+
+        $driverCode = (int) ($e->errorInfo[1] ?? 0);
+        if ($driverCode === 1062) {
+            return true;
+        }
+
+        return str_contains(strtolower($e->getMessage()), 'duplicate');
     }
 
     private function canSendNow(): bool

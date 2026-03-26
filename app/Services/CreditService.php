@@ -6,6 +6,7 @@ use App\Models\Credit;
 use App\Models\CreditItem;
 use App\Models\Customer;
 use App\Models\Installment;
+use App\Models\Payment;
 use App\Models\ProductVariant;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -135,6 +136,65 @@ class CreditService
             $credit->save();
 
             app(NotificationService::class)->queueCreditCreated($credit->refresh());
+
+            return $credit->refresh();
+        });
+    }
+
+    public function cancelCredit(Credit $credit, string $reason, ?int $cancelledBy = null): Credit
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new \InvalidArgumentException('Debe ingresar un motivo de cancelación.');
+        }
+
+        return DB::transaction(function () use ($credit, $reason, $cancelledBy) {
+            $credit = Credit::query()->lockForUpdate()->findOrFail($credit->id);
+
+            if ($credit->status === 'cancelled') {
+                return $credit->refresh();
+            }
+
+            $hasPostedPayments = Payment::query()
+                ->where('credit_id', $credit->id)
+                ->where('status', 'posted')
+                ->exists();
+
+            if ($hasPostedPayments) {
+                throw new \RuntimeException('No se puede cancelar el crédito porque existen pagos registrados.');
+            }
+
+            $items = CreditItem::query()
+                ->where('credit_id', $credit->id)
+                ->orderBy('id')
+                ->get();
+
+            foreach ($items as $item) {
+                $variantId = (int) ($item->product_variant_id ?? 0);
+                $qty = (int) ($item->quantity ?? 0);
+                if ($variantId <= 0 || $qty <= 0) {
+                    continue;
+                }
+
+                $variant = ProductVariant::query()
+                    ->lockForUpdate()
+                    ->find($variantId);
+
+                if ($variant) {
+                    $variant->increment('stock', $qty);
+                }
+            }
+
+            Installment::query()
+                ->where('credit_id', $credit->id)
+                ->delete();
+
+            $credit->status = 'cancelled';
+            $credit->balance = 0;
+            $credit->cancelled_at = now();
+            $credit->cancelled_by = $cancelledBy;
+            $credit->cancel_reason = $reason;
+            $credit->save();
 
             return $credit->refresh();
         });

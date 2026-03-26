@@ -27,6 +27,9 @@ class Credit extends Model
         'total_amount',
         'balance',
         'status',
+        'cancelled_at',
+        'cancelled_by',
+        'cancel_reason',
         'created_by',
         'updated_by',
     ];
@@ -49,6 +52,7 @@ class Credit extends Model
             'total_interest' => 'decimal:2',
             'total_amount' => 'decimal:2',
             'balance' => 'decimal:2',
+            'cancelled_at' => 'datetime',
         ];
     }
 

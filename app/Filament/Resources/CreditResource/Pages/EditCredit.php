@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CreditResource\Pages;
 use App\Filament\Resources\CreditResource;
 use App\Filament\Resources\PaymentResource;
 use App\Models\Installment;
+use App\Services\CreditService;
 use App\Services\PaymentService;
 use Carbon\CarbonImmutable;
 use Filament\Actions;
@@ -99,12 +100,46 @@ class EditCredit extends EditRecord
                         ->success()
                         ->send();
                 }),
+            Actions\Action::make('cancel_credit')
+                ->label('Cancelar crédito')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->form([
+                    Forms\Components\Textarea::make('reason')
+                        ->label('Motivo')
+                        ->rows(3)
+                        ->required(),
+                ])
+                ->visible(fn (): bool => (string) ($this->getRecord()->status ?? '') !== 'cancelled')
+                ->action(function (array $data): void {
+                    $credit = $this->getRecord();
+
+                    try {
+                        app(CreditService::class)->cancelCredit(
+                            credit: $credit,
+                            reason: (string) ($data['reason'] ?? ''),
+                            cancelledBy: auth()->id(),
+                        );
+                    } catch (\Throwable $e) {
+                        Notification::make()
+                            ->title($e->getMessage())
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    Notification::make()
+                        ->title('Crédito cancelado.')
+                        ->success()
+                        ->send();
+                }),
             Actions\Action::make('register_payment')
                 ->label('Registrar pago')
                 ->icon('heroicon-o-credit-card')
                 ->url(fn (): string => PaymentResource::getUrl('create', ['credit_id' => $this->getRecord()->id]))
                 ->openUrlInNewTab(),
-            Actions\DeleteAction::make(),
         ];
     }
 }

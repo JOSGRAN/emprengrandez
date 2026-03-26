@@ -7,7 +7,9 @@ use App\Filament\Resources\CreditResource\RelationManagers\InstallmentsRelationM
 use App\Filament\Resources\CreditResource\RelationManagers\ItemsRelationManager;
 use App\Filament\Resources\CreditResource\RelationManagers\PaymentsRelationManager;
 use App\Models\Credit;
+use App\Models\CreditItem;
 use App\Models\Installment;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\CreditService;
@@ -33,6 +35,26 @@ class CreditResource extends Resource
     protected static ?string $modelLabel = 'Crédito';
 
     protected static ?string $pluralModelLabel = 'Créditos';
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
+    }
+
+    public static function canForceDelete($record): bool
+    {
+        return false;
+    }
+
+    public static function canForceDeleteAny(): bool
+    {
+        return false;
+    }
 
     public static function form(Form $form): Form
     {
@@ -277,7 +299,17 @@ class CreditResource extends Resource
                                 'cancelled' => 'Cancelado',
                             ])
                             ->default('active')
-                            ->required(),
+                            ->required()
+                            ->visibleOn('create'),
+                        Forms\Components\Placeholder::make('status_view')
+                            ->label('Estado')
+                            ->visibleOn('edit')
+                            ->content(fn (?Credit $record): string => match ($record?->status) {
+                                'active' => 'Activo',
+                                'closed' => 'Cerrado',
+                                'cancelled' => 'Cancelado',
+                                default => (string) ($record?->status ?? '-'),
+                            }),
                         Forms\Components\TextInput::make('total_amount')
                             ->label('Total')
                             ->disabled()
@@ -439,6 +471,48 @@ class CreditResource extends Resource
                             ->success()
                             ->send();
                     }),
+                Tables\Actions\Action::make('cancel_credit')
+                    ->label('Cancelar')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label('Motivo')
+                            ->rows(3)
+                            ->required(),
+                    ])
+                    ->visible(function (Credit $record): bool {
+                        if ((string) ($record->status ?? '') === 'cancelled') {
+                            return false;
+                        }
+
+                        return ! Payment::query()
+                            ->where('credit_id', $record->id)
+                            ->where('status', 'posted')
+                            ->exists();
+                    })
+                    ->action(function (Credit $record, array $data): void {
+                        try {
+                            app(CreditService::class)->cancelCredit(
+                                credit: $record,
+                                reason: (string) ($data['reason'] ?? ''),
+                                cancelledBy: auth()->id(),
+                            );
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title($e->getMessage())
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Crédito cancelado.')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('register_payment')
                     ->label('Registrar pago')
                     ->icon('heroicon-o-credit-card')
@@ -448,8 +522,6 @@ class CreditResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
                     Tables\Actions\RestoreBulkAction::make(),
                 ]),
             ]);
