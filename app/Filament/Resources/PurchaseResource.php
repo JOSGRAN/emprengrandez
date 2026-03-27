@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PurchaseResource\Pages;
 use App\Filament\Resources\PurchaseResource\RelationManagers\ItemsRelationManager;
 use App\Models\Product;
+use App\Models\PurchaseItem;
 use App\Models\ProductVariant;
 use App\Models\Purchase;
 use App\Models\Wallet;
@@ -160,7 +161,34 @@ class PurchaseResource extends Resource
                                     })
                                     ->searchable()
                                     ->required()
-                                    ->live(),
+                                    ->live()
+                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) use ($updateTotal) {
+                                        $variantId = (int) ($get('product_variant_id') ?? 0);
+                                        if ($variantId <= 0) {
+                                            return;
+                                        }
+
+                                        $lastCost = PurchaseItem::query()
+                                            ->where('product_variant_id', $variantId)
+                                            ->latest('id')
+                                            ->value('cost_price');
+
+                                        if ($lastCost !== null && (float) $lastCost > 0) {
+                                            $set('cost_price', (string) $lastCost);
+                                            $updateTotal($set, $get);
+
+                                            return;
+                                        }
+
+                                        $productId = (int) ($get('product_id') ?? 0);
+                                        if ($productId > 0) {
+                                            $productCost = Product::query()->whereKey($productId)->value('cost');
+                                            if ($productCost !== null && (float) $productCost > 0) {
+                                                $set('cost_price', (string) $productCost);
+                                                $updateTotal($set, $get);
+                                            }
+                                        }
+                                    }),
                                 Forms\Components\TextInput::make('quantity')
                                     ->label('Cantidad')
                                     ->numeric()

@@ -153,7 +153,7 @@ class SaleResource extends Resource
                                     ->searchable()
                                     ->required()
                                     ->live()
-                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
+                                    ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) use ($updateTotal) {
                                         $variantId = (int) ($get('product_variant_id') ?? 0);
                                         if ($variantId <= 0) {
                                             return;
@@ -164,8 +164,20 @@ class SaleResource extends Resource
                                             return;
                                         }
 
-                                        $set('price', (string) ($variant->price ?? 0));
+                                        $price = $variant->price;
+                                        if ($price === null || (float) $price <= 0) {
+                                            $productId = (int) ($get('product_id') ?? 0);
+                                            if ($productId > 0) {
+                                                $fallback = Product::query()->whereKey($productId)->value('price');
+                                                if ($fallback !== null && (float) $fallback > 0) {
+                                                    $price = $fallback;
+                                                }
+                                            }
+                                        }
+
+                                        $set('price', (string) ($price ?? 0));
                                         $set('quantity', max(1, (int) ($get('quantity') ?? 1)));
+                                        $updateTotal($set, $get);
                                     }),
                                 Forms\Components\TextInput::make('quantity')
                                     ->label('Cantidad')
